@@ -1,0 +1,394 @@
+---
+title: "Bar Chart Template"
+author: "Jay Jeffries"
+date: "7/14/2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+If in RStudio, when you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+```{r loading package and data, echo = FALSE, warning = FALSE, message = FALSE}
+library(ggplot2) # Run the code "install.packages("ggplot2")" without the quotes to install this, if necessary.
+library(readxl) # Run if using Excel file, run code "install.packages("readxl")" without the quotes to install this, if necessary.
+library(dplyr) # Run if rearranging bars in chart by specific order, run code "install.packages("dplyr")" without the quotes to install this, if necessary.
+library(report) # For report function
+library(scales) # For percentage scales on each bar
+
+# Recommendation: save this .Rmd to the same folder that the data is in
+
+# read.csv("file path") # Reads in a comma-separated file
+# read_xlsx("file path") # Reads in an Excel data file
+# read.delim("file path") # Reads in a tab-delimited file (e.g. documents ending in )
+```
+Note that the `echo = FALSE` parameter was added to the code chunk to *prevent printing of the embedded R code* that generated the plot. Erase this if you wish to include your data entry and package loading in your output.
+
+```{r}
+report(iris$Species) 
+
+# create a percentage for each category to add to the barplot bars later
+irisNew <- iris %>% 
+  group_by(Species) %>% 
+ summarize(count = n()) %>%  
+  # count records by species
+ mutate(pct = count/sum(count))  
+# find percent of total by dividing count by sum of count 
+
+# (e.g. percentage of virginica = 50 virginica irises / 150 total irises = .33)
+
+# extremely basic barchart with little to no design edits.. this can be used as a reference
+ggplot(irisNew, aes(Species, pct, fill = Species)) + 
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = scales::percent(pct)), position = position_stack(vjust = 1.05)) +
+  scale_y_continuous(labels = scales::percent) +
+  ggtitle("Reference Bar Chart for Frequency of Iris Species") 
+# In the following code, we do not use the irisNew data because there are ways to input percentages without having to reformat data
+
+```
+We will use the iris dataset to format barcharts, which involves:
+
+* 50 irises belonging in each of the 3 categorical Species groups (setosa, versicolor, and virginica)
+
+Where:
+
+* 33% are of the setosa species
+* 33% are of the versicolor species
+* 33% are of the virginica species
+
+This can be represented through use of a barchart. Below is code supported by ggplot2 that shows exactly how this can be done: 
+
+## Vertical Barchart Template 
+### Bar Color Indicates Level (color not predetermined; automatic)
+```{r}
+ggplot(data = iris, aes(x = factor(Species), y = prop.table(stat(count)), 
+                        # x can represent any categorical variable of interest 
+                        # here y represents the percentage
+                          fill = factor(Species), 
+                        # this line colors each bar by Species category
+                          label = scales::percent(prop.table(stat(count))))) +
+    geom_bar(position = "dodge") + 
+  # dodge preserves the vertical and horizontal size of the bar and does not allow bars to overlap
+    geom_text(stat = "count", 
+              position = position_dodge(.9), vjust = -0.5, size = 3) + 
+    scale_y_continuous(labels = scales::percent, limits = c(0, .35), breaks = NULL) + 
+  # changes the y-axis from numerical count to a percentage scale
+  # the limits part extends the y axis so that the percentage labels don't get smooshed,
+  # where 0 is the lowest limit and .35 (or 35%) is the highest the chart will go
+  # while the breaks = NULL code removes y-axis tick marks and labels
+ggtitle("Figure 1", 
+        # title of the histogram
+    subtitle = "Frequency of Species of Iris") + 
+  # the subtitle of the chart
+    labs(x = "Species", y = "Percent", fill = "Species") + 
+  # The X- and Y-axis labels along with the legend ("fill")
+    theme_bw() + 
+  # gets rid of the gray background in the reference chart
+  # placing this theme_bw() line after the following 2 lines will not bold the figure title, be cognizant of this
+theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), 
+      # Bolding the plot title
+        axis.title = element_text(face = "bold"),
+      # Bolding the axes titles
+      panel.grid.major=element_blank()) # Removes grid lines behind bars
+
+```
+
+## Vertical Barchart Template 
+### Bar Color Does Not Indicate Level (color predetermined)
+```{r}
+ggplot(data = iris, aes(x = factor(Species), y = prop.table(stat(count)),                           
+                        label = scales::percent(prop.table(stat(count))))) + 
+  # x can represent any categorical variable of interest but here y represents the percentage
+    geom_bar(fill = "#367588", width = 0.2) + # 
+  # Width ranges from 0 to 1. The fill color can be any hex code you wish it to be. This one is teal blue.
+    geom_text(stat = "count", 
+              position = position_dodge(.9), vjust = -0.5, size = 3) + 
+  # breaks = NULL rids y-axis of tick marks or percentage labels (delete if you want this included!) +
+    ggtitle("Figure 2", 
+            # title of the histogram
+            subtitle = "Frequency of Species of Iris") + 
+  # the subtitle of the chart
+    labs(x = "Species", y = "Frequency") +
+  theme_bw() + 
+  # This removes the gray background from the previous chart, do not place after the following 2 lines
+  theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), 
+        # Bolding the plot title
+        axis.title = element_text(face = "bold"),
+        panel.grid.major=element_blank()) + 
+  # Removes grid lines behind bars)
+  scale_y_continuous(limits = c(0, .35), labels = NULL, breaks = NULL) # gets rid of y-axis tick marks
+
+# Hex, or html, color codes and code palettes can be found all over the internet. 
+# Try to incorporate palettes that are accessible/legible for color-blind or color-deficient viewers. 
+# Check out: https://davidmathlogic.com/colorblind/#%23648FFF-%23785EF0-%23DC267F-%23FE6100-%23FFB000
+```
+## Vertical Barchart Template
+### Where Each Bar Color Indicates Level (color predetermined)
+```{r}
+# Plots with bars as different colors
+ggplot(data = iris, aes(x = Species, y = prop.table(stat(count)), 
+   # X can represent any categorical variable of interest but here y represents the percentage
+                          label = scales::percent(prop.table(stat(count))))) + 
+  # the scale is now in percentage format
+  geom_bar(fill = c("#648FFF", "#FE6100", "#FFB000"), width = 0.2) + 
+  # edits the bars to specific list of hex-coded colors
+  # The fill color can be any single or group of hex codes you wish it to be. Width ranges from 0 to 1. 
+  geom_text(stat = "count", 
+              position = position_dodge(.9), vjust = -0.5, size = 3) + 
+    scale_y_continuous(limits = c(0, .35), labels = scales::percent, breaks = NULL) +  
+  # remove y-axis tick marks
+  ggtitle("Figure 3",
+    subtitle ="Frequency of Species of Iris") + 
+  # the title of the barchart
+  labs(x = "Species", y = "Frequency") + 
+  # The X- and Y-axis labels
+  theme_bw() + 
+  # placing this line after the following 2 lines will not bold the figure title, so be cognizant of this
+  theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), 
+        # Bolding the plot title
+        axis.title = element_text(face = "bold"), 
+        # Bolding the axes title
+        panel.grid.major=element_blank()) # Removes grid lines behind bars) 
+
+```
+
+## Vertical Barchart with Reordered Levels
+### Using {dplyr} pipe-in functions
+```{r}
+# Reordering according to a specific list of categories. Before doing this, the data itself needs to be re-ordered via several functions found in the {dplyr} package
+iris %>% 
+  # begin with the iris dataset
+  arrange(Species) %>% 
+  # Arranging the Species variable of the iris dataset
+  mutate(Species = factor(Species, levels = c("virginica", "versicolor", "setosa"))) %>% 
+  # the mutate() function actually creates a new column with reordered levels by using information from the previously unordered column. 
+  # Within c() is where you specify the exact order you wish the bars to follow (from left to right)
+  # Below this is where you would pipe in the typical barchart code that we have used in the previous figures
+  ggplot(aes(x = Species, y = prop.table(stat(count)), 
+             # X can represent any categorical variable of interest but here Y represents the percentage
+                          label = scales::percent(prop.table(stat(count))))) + 
+  # Returning to the typical plot code except data = iris is not necessary 
+  # since you have already piped it in via %>% 
+  geom_text(stat = "count", 
+              position = position_dodge(.9), vjust = -0.5, size = 3) + 
+    geom_bar(fill = "#367588", width = 0.2) + 
+  # This hex code is for darker teal blue
+  ggtitle("Figure 4",
+          subtitle = "Frequency of Species of Iris") +
+  labs(x = "Species", y = "Frequency", 
+       caption = "We used the {dplyr} package to 'pipe' (see: %>%) multiple R commands 
+       into one instead of going into the actual dataframe and 
+       re-ordering the data itself. Notice that the bars 
+       are ordered in reverse when compared to Figure 1-3") + 
+  # Adds caption to bottom right of chart. Make sure to divide sentences into spaced chunks so that they are 
+ # legible, otherwise the text will not appear normally
+  theme_bw() + 
+  # placing this line after the following 2 lines will not bold the figure title, so be cognizant of this
+  theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), 
+        # Bolding the plot title
+        axis.title = element_text(face = "bold"),
+        panel.grid.major=element_blank()) + 
+  # Removes grid lines behind bars
+  scale_y_continuous(limits = c(0, .35), labels = NULL, breaks = NULL) # Expands limits beyond .33 or 33% and removes tickmarks and labels
+```
+
+## Horizontal Barchart Template
+### Bar Colors Do Not Indicate Level
+```{r}
+ggplot(data = iris, aes(x = Species, y = prop.table(stat(count)), 
+                        # X can represent any categorical variable of interest but here Y represents the percentage
+                          label = scales::percent(prop.table(stat(count))))) + 
+  # x can represent any categorical variable of interest
+  geom_bar(width = 0.2) + 
+  # creates the barchart plot, width ranges from 0 to 1
+    geom_text(stat = "count", 
+              position = position_dodge(.9), hjust = -.15, size = 3) + 
+  # notice that hjust is used here as it adjusts the percentage horizontally
+  labs(title = "Frequency of Species of Iris", 
+       # the title of the barchart
+       subtitle = "Figure 5", 
+       # whatever subtitle you may have (delete if unnecessary)
+         x = "Species", y = "Frequency", 
+       # The X- and Y-axis labels
+       caption = "via {ggplot2} package") + 
+  # Whatever caption you have (delete if unnecessary but keep parentheses to cap off the labs function)
+  scale_y_continuous(limits = c(0, .35), breaks = NULL) +
+  theme_bw() + 
+  # Placing this line after the following 2 lines will not bold the figure title, so be cognizant of this
+  theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), 
+        # Bolding the plot title
+        axis.title = element_text(face = "bold"),
+        panel.grid.major=element_blank()) + 
+    # Removes grid lines behind bars
+  coord_flip()   # Flips the coordinates so that the barchart is horizontal
+```
+
+## Horizontal Barchart Template
+### Bars Rearranged via {dplyr}
+```{r}
+# Rearranging bars by a specific order into horizontal bar chart:
+iris %>%
+  arrange(Species) %>% 
+  # Arranging the Species variable of the iris dataset
+  mutate(Species = factor(Species, levels = c("virginica", "versicolor", "setosa"))) %>% 
+  # Above is where you specify the exact order you wish the bars to follow (from left to right)
+  ggplot(aes(x = Species, y = prop.table(stat(count)), 
+             # X can represent any categorical variable of interest but here y represents the percentage
+                          label = scales::percent(prop.table(stat(count))))) + 
+  # Returning to the typical plot code except data = iris is not necessary 
+  # since you have already piped it in via %>% 
+    geom_bar(fill = "#367588", width = 0.3) + 
+  # This hex code is for darker teal blue
+    geom_text(stat = "count", 
+              position = position_dodge(.9), hjust = -.15, size = 3) + 
+  # notice that hjust is used here as it adjusts the percentage horizontally
+  scale_y_continuous(breaks = NULL) + 
+  labs(x = "Species", y = "Frequency", 
+       title = "Figure 6",
+       subtitle = "Frequency of Species of Iris",
+       caption = "using {dplyr} package to rearrange levels") +
+  theme_bw() + 
+  # placing this line after the following 2 lines will not bold the figure title, so be cognizant of this
+  theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), # Bolding the plot title
+        axis.title = element_text(face = "bold"),
+        panel.grid.major=element_blank()) +
+  # Removes grid lines behind bars
+  coord_flip()
+```
+
+## Horizontal Barchart Template
+### Bar Color Indicates Level (colors predetermined) 
+```{r}
+# Plots with bars as different colors
+ggplot(data = iris, aes(x = Species, y = prop.table(stat(count)), 
+                        # X can represent any categorical variable of interest but here y represents the percentage
+                          label = scales::percent(prop.table(stat(count))))) + 
+  # the scale is now in percentage format
+  geom_bar(fill = c("#648FFF", "#FE6100", "#FFB000"), width = 0.2) +
+  # Edits the bars to specific list of hex-coded colors
+  # The fill color can be any single or group of hex codes you wish it to be. 
+  # Width ranges from 0 to 1. 
+  geom_text(stat = "count", 
+              position = position_dodge(.9), hjust = -.15, size = 3) + 
+    # notice that hjust is used here as it adjusts the percentage horizontally
+    scale_y_continuous(breaks = NULL) +  
+    # remove y-axis tick marks
+  ggtitle("Figure 7",
+    subtitle ="Frequency of Species of Iris") + 
+    # the title of the barchart
+  labs(x = "Species", y = "Frequency") + 
+    # The X- and Y-axis labels
+  theme_bw() +
+  theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), 
+        # Bolding the plot title
+        axis.title = element_text(face = "bold"), 
+        # Bolding the axes titles
+        panel.grid.major=element_blank()) + 
+    # Removes grid lines behind bars
+  coord_flip()
+```
+
+## CO2 Data Exploration
+### Simple Counts & Frequencies
+```{r}
+report(CO2$Treatment)
+report(CO2$Type)
+```
+To create the stacked barcharts, we will use the CO2 dataset. This involves:
+
+Treatment variable, where:
+
+* 50% chilled treatment
+* 50% unchilled treatment
+
+Type variable, where:
+
+* 50% Quebec
+* 50% Mississippi
+
+## Vertical Stacked Barchart Template
+### Legend on Bottom (colors not predetermined)
+```{r}
+ggplot(CO2, aes(x = Type, fill = Treatment)) + 
+  geom_bar(stat = "count", position = "fill", width = 0.3) +
+  geom_text(aes(label = scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..])),
+            position = position_fill(vjust = 0.5), stat = "count") +
+  labs(x = "Location", y = "Frequency") +
+  ggtitle("Figure 8",
+          subtitle = "Plant Treatment by Location") + 
+    scale_y_continuous(labels = scales::percent_format(), breaks = NULL) + 
+  theme_bw() +
+  theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), 
+        # Bolding the plot title
+        axis.title = element_text(face = "bold"), 
+       #  Bolding the axes titles
+        panel.grid.major=element_blank(), 
+        # Remove gridlines through x axis
+        legend.position = "bottom") 
+  # Places legend beneath the chart -- if removed, legend appears on right hand side
+```
+
+## Vertical Stacked Barchart Template
+### Legend on Side (colors predetermined)
+```{r}
+ggplot(CO2, aes(x = Type, fill = Treatment)) + 
+  geom_bar(stat = "count", position = "fill", width = 0.3) +
+  geom_text(aes(label = scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..])), 
+            # This line creates percentage labels for each bar
+            # Essentially what it says is the count / sum of counted values * number of values (e.g. 1 / 4 * 100 = .25 = 25%)
+            position = position_fill(vjust = 0.5), stat = "count") +
+# This line positions the percentages in the middle of the bar
+  scale_fill_manual(values = c("#DADAEB", "#367588")) + 
+  # Manually changes color of stacked bars with hex codes
+  labs(x = "Location", y = "Frequency") +
+  ggtitle("Figure 9",
+          subtitle = "Frequency of Plant Location by Treatment") + 
+    scale_y_continuous(breaks = NULL) + 
+  # Removes y-axis tick marks
+  theme_bw() +
+  theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), 
+        # Bolding the plot title
+        axis.title = element_text(face = "bold"), 
+        # Bolding the axes titles
+        legend.title = element_text(face = "bold"), 
+        # Bolding legend title
+        panel.grid.major=element_blank()) # Remove gridlines through x axis
+
+```
+
+## Horizontal Stacked Barchart Template
+### Legend on Side (colors predetermined)
+```{r}
+ggplot(CO2, aes(x = Type, fill = Treatment)) + 
+  geom_bar(stat = "count", position = "fill", width = 0.3) +
+  geom_text(aes(label = scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..])), 
+            # This line creates percentage labels for each bar
+            # Essentially what it says is the count / sum of counted values * number of values (e.g. 1 / 4 * 100 = .25 = 25%)
+            position = position_fill(vjust = 0.5), stat = "count") +
+# This line positions the percentages in the middle of the bar
+  scale_fill_manual(values = c("#DADAEB", "#367588")) +
+  # Manually changes color of stacked bars with hex codes
+  labs(x = "Location", y = "Frequency") +
+  ggtitle("Figure 9",
+          subtitle = "Frequency of Plant Location by Treatment") + 
+    scale_y_continuous(breaks = NULL) + 
+  # Removes y-axis tick marks
+  theme_bw() +
+  theme(plot.title = element_text(size = rel(1.2), face = "bold", vjust = 1.5), 
+        # Bolding the plot title
+        axis.title = element_text(face = "bold"), 
+        # Bolding the axes titles
+        legend.title = element_text(face = "bold"), 
+        # Bolding legend title
+        panel.grid.major=element_blank()) +  
+  # Remove gridlines through x axis
+        coord_flip()
+```

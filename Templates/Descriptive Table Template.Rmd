@@ -1,0 +1,241 @@
+---
+title: "Descriptive Table Template"
+author: "Jay Jeffries"
+date: "8/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(kableExtra) # download if necessary with: install.packages("kableExtra")
+library(skimr) # download if necessary with: install.packages("skimr")
+library(report) # download if necessary with: install.packages("report")
+library(dplyr)
+library(DataExplorer)
+library(modelsummary)
+```
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+For the purposes of this code, **you will have to Knit output in html**. That is because the package {*kable*} depends entirely on html, and will not function if you attempt to output into pdf or Word format. Once you save output into html, you can copy + paste *any* table into the Word document of your choosing. 
+
+An awesome walkthrough of this package can be found here: <https://haozhu233.github.io/kableExtra/awesome_table_in_html.html>. Another R package that can make beautiful tables is the {*gt*} package explained here: <https://gt.rstudio.com/>
+
+If in RStudio, when you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+### Quick Dataset Exploration
+```{r cars}
+skim(mtcars) # data characteristics in dataframe format
+report(mtcars) # data characteristics in sentence format
+plot_histogram(mtcars) # quickly creates facet-wrapped histograms for all continuous variables in the mtcars dataset
+```
+
+To practice descriptive tables, we will be using the built-in dataset called mtcars, or "motor trend cars".
+As you can see, most of the variables are continuous in nature, while variables like "carb", "cyl", "or "gear" are discrete with finite levels. 
+The main reason I know this is by checking out the mini-histogram printed on the far right of the skimr dataframe above.
+The report() output beneath this dataframe are for those that prefer reading written results over tabled results :) 
+
+### Terribly Basic Descriptive Table
+```{r}
+kbl(mtcars) %>%
+  kable_styling()
+```
+This table, while not *too* bad looking, it could use some adjustments and updating. It serves as a reference for the upcoming content. 
+What if we want to add a title? Change the header? Group the rows or columns? Edit table fonts? Add color? Input scroll bars for larger tables? 
+
+**Lets do it!**
+
+### Data Preparation and Examples
+```{r}
+mtcarsDesc = mtcars %>% # Creating a new dataset using the origina mtcars dataset
+  group_by(carb) %>% # Grouping the dataset by the carb variable
+  summarise( 
+    n = n(), # n, or sample size count
+    Avg_mpg = round(mean(mpg, na.rm = TRUE),2), # the average mpg is rounded to 2 decimals (,2) and missing values are removed via na.rm = TRUE
+    Avg_wt = round(mean(wt, na.rm = TRUE),2), # changing the (,2) will round the average to whatever number of decimal points you would prefer
+    Avg_drat = round(mean(drat, na.rm = TRUE),2), # revising the name before the = (e.g. "Avg_drat") changes what appears in the table heading
+    Avg_qsec = round(mean(qsec, na.rm = TRUE),2),
+    Avg_hp = round(mean(hp, na.rm = TRUE),2),
+    Avg_disp = round(mean(disp, na.rm = TRUE),2)
+  ) 
+```
+The dataset mtcars does not inherently include means, counts, frequencies. Rather, it is raw data collected. That is likely your case. Depending on how you wish to use this template, you may need to prepare your data for analysis. Above, we grouped our dataset by the carburetor variable (6 levels), found the means for mpg, wt, drat, qsec, hp, and disp, and requested the count (n) for each carb group. 
+
+It is worth noting that na.rm removes the value if it is missing (it actually turns into and is treated as "NA" rather than 0).
+If you wish to perform listwise deletion of missing content--which I think would be a travesty--use:
+
+|         deleteddata <- na.omit(your dataset) 
+
+To create a brand new dataset with all rows involving any missing values *removed*.
+
+### Examples of Descriptive Tables
+```{r}
+# Table of Averages using the revised dataset we just made
+kbl(mtcarsDesc, caption = "Figure 1. Motor Trend Cars Descriptive Statistics by Carborator") %>%
+  # kbl() is a command from the kableExtra package (a revision to the Kable package) which will be used frequently here
+  # I like to use caption = as a way to introduce the table's title!
+  # remember, mtcarsDesc was just created above!
+  add_header_above(c(" " = 2, "Mean Statistic" = 6)) %>%
+  # Later on, we will get into how to make table subheadings
+  kable_material("hover", font_size = 12, full_width = FALSE)
+  # material and font customizations are described later on -- for now, try hovering your cursor over the tables
+# Grouped Table of Counts
+mtcars %>%
+  group_by(cyl) %>%
+  count(carb) %>%
+  kbl(caption = "Figure 2. Count of Carborators by Cylinder Type") %>%
+  kable_paper(font_size = 12) %>% # this is one of the 6 premade themes in the package, try out these options if you're feeling crazy:
+  # kable_classic, kable_classic_2, kable_minimal, kable_material, kable_material_dark
+  add_header_above(c("Car Part" = 2, "Count" = 1)) %>%
+  kable_styling(full_width = FALSE) # kable_styling function allows you to specify additional formatting options; full_width = FALSE allows the table to be in its slimmer form instead of full-screen width
+```
+
+### Font and Position Edits to Descriptive Table
+```{r}
+kbl(mtcarsDesc) %>%
+  kable_styling(font_size = 18, # font_size allows you to edit whatever size of font you'd like
+                html_font = "serif", # serif = Times New Roman, sans = Arial, mono = Courier, and idk any others
+                position = "left", # aligns the table to the left or right; centered is the default so entirely delete if unnecessary
+                # "float_right" or "float_left" lets text wrap around the table depending on your preference
+                full_width = FALSE) # full_width = FALSE reduces table to fit within margins instead of expand to full page
+# By default, these tables take up 100% of the width of the output, which sometimes looks unsightly in RMarkdown and makes for a mess in Word
+```
+
+Theh code `full_width = FALSE` is necessary when copy + pasting html table output into Word effectively. Otherwise, the table margins do not fit into a typical Word document (but can be, with *force*..). 
+
+### General Customizations of Descriptive Table
+```{r}
+kbl(mtcarsDesc) %>%
+  kable_material(c("striped", "hover", "condense", "responsive")) %>%
+  kable_styling(fixed_thead = TRUE)
+# "striped" makes every other row a light gray color
+# "hover" helps to indicate which row your cursor is hovering over
+# "condense" shortens the row height
+# "responsive" makes the table responsive to horizontal scrolling (especially important when viewing on mobile devices)
+# fixed_thead = TRUE freezes the column headings when you scroll up/down the table for very long tables
+```
+
+### Header Customizations of Descriptive Table
+```{r}
+kbl(mtcarsDesc) %>%
+  kable_material(c("striped", "hover", "condense", "responsive")) %>%
+  kable_styling(fixed_thead = list(enabled = TRUE, background = "teal")) %>% # to customize the header background try this with your own choice of color!
+  # the code below introduces row_spec, meaning row specialization, which allows us to make more table customizations!
+  row_spec(0, color = "lightgray") # this line edits the font of the header to be lightgray; notice here that the 0 means "row 0", aka the header
+```
+
+### Customizing Rows/Columns Content in Descriptive Table
+```{r}
+kbl(mtcars) %>%
+  kable_minimal(full_width = FALSE) %>%
+  row_spec(2:3, bold = TRUE, italic = TRUE) %>% # content in row is bolded, italicized, and centered with these features
+  column_spec(4:5, color = "darkgreen", background = "gold") %>% # color indicates font color while background indicates... yes.. the background color
+  column_spec(6:7, underline = TRUE, strikeout = TRUE) %>% # underlining and strikeout of content within entire column
+  row_spec(9:10, angle = 45) # angle will likely be unused (especially when row content runs into each other), but this is another option
+```
+
+### Grouped Columns Descriptive Table
+```{r}
+kbl(mtcars, caption = "Figure 5. Grouped Columns Frequency Table") %>%
+  # caption can act as a table title
+  kable_minimal() %>% # One of my least-favorite premade table themes in regard to report-writing
+  add_header_above(c("Car Name" = 1, "Group 1" = 5, "Group 2" = 4, "Group 3" = 2)) %>%
+  # The abover code is "additive" in terms of columns, where the first listed item "Car Name" = 1 involves column 2,
+  # "Group 1" = 5 includes the next 5 columns (columns 2:6) which is mpg through drat, "Group 2" = 5 are columns (7:12) wt through am, etc.
+  kable_styling(full_width = FALSE)   # full_width = FALSE condenses the table into table with less spacing between columns
+```
+
+### Grouped Rows Descriptive Table
+```{r}
+kbl(mtcars, caption = "Figure 4. Grouped Rows Frequency Table") %>%
+  kable_classic_2("striped") %>%
+  kable_styling(full_width = FALSE) %>%
+  pack_rows("Car Group 1", 1, 8, label_row_css = "background-color: #999; color: #fff;") %>%
+  pack_rows("Car Group 2", 9, 16, label_row_css = "background-color: #890; color: #fff;") %>%
+  pack_rows("Car Group 3", 17, 23, label_row_css = "background-color: #679; color: #fff;") %>%
+  pack_rows("Car Group 4", 24, 32, label_row_css = "background-color: #123; color: #fff;")
+# pack_rows groups rows of your data based upon which row number you enter, where the first number (24) above is the first row you'd like to include
+# label_row_css is the way to customize the color of the background and words -- use css colors
+```
+
+### Indented Rows Descriptive Table
+```{r}
+kbl(mtcars) %>%
+  kable_styling("hover", full_width = FALSE) %>%
+  add_indent(c(2, 4, 6, 8, 10, 12, 14, 18, 20, 22, 24)) # add_indent allows you to specify rows that you want to indent (this one is every other row)
+```
+
+
+### Descriptive Table with Footnotes
+```{r}
+kbl(mtcars[1:7,], caption = "Figure 4. Grouped Rows Frequency Table") %>%
+  # mtcars[1:7,] only printed rows 1 through 7, where the empty space after the comma told R to print all columns
+  # if you tried mtcars[,1:3] R would print all rows but only include columns 1 through 3
+  kable_styling(full_width = FALSE) %>%
+  add_footnote(c("* p-value < 0.05", "** p-value < 0.01", "*** p-value < 0.001"), 
+               # add a list of footnotes depending on what you'd like to enter
+               notation = "number") # notation can also be "alphabet" for a, b, c or can be "symbol"
+# note - I did not perform any statistical tests, so there are no asterisks to indicate significant p-values
+```
+
+### Data Exploration for Model Tables
+```{r}
+skim(sleep)
+report(sleep)
+plot_histogram(sleep) # the only continuous variable to examine is "extra" hours of sleep, so there is only one histogram to examine
+```
+|
+New dataset to show how model summaries can be output into tables with some of the same commands from the {*kableExtra*} package and kbl() customization commands.
+
+### Model Summary Tables
+Some more resources for model summary output tables can be found [here]("https://vincentarelbundock.github.io/modelsummary/articles/customization.html")
+```{r, warning = FALSE}
+ttestmodel1 <- list() # the t-test model consists of a list (vector) of information that will be input below
+ttestmodel1[["Two-Sample Mean Difference Test"]] <- t.test(extra ~ group, data = sleep) # anything within the [[]] is the model's heading
+# within this model is the classic t.test() statistical test, where we specified an independent samples t-test of extra horus of sleep between the two sleep groups 
+msummary(ttestmodel1, 
+         statistic = c("conf.int", "p.value"), # statistic = c() can also include 'std.error', 'p.value', 'conf.int' depending on your needs
+         stars = TRUE, # "stars" indicates whether or not you want your table footnotes to include asterisks for p-value notations
+         conf_level = .95,  # confidence interval was set at 95%
+         title = "Fig. 1 Independent-Samples t-Test Model Summary", # title of figure that appears above table
+         notes = list("Non-significant difference across sleep groups", "p-value above 0.05")) %>% # the "notes = list()" allows you to input whatever textual information you wish to include at the bottom of the model; I used it as a footnotes area
+  row_spec(0, bold = TRUE, background = "lightgray") # This is the same custom command that we used earlier to specify row customizations
+
+ttestmodel2 <- list() 
+ttestmodel2 <- t.test(extra ~ group, data = sleep, caption = "Two-Sample Mean Difference Test") # Similarly, implementing the "caption =" portion will give the table a title, but will not be output into the first row as a header. Choose whichever you'd like!
+msummary(ttestmodel2, statistic = c("conf.int", "p.value"), conf_level = .95, title = "Fig. 2 Independent-Samples t-Test Model Summary",
+         notes = list("Non-significant difference across sleep groups", "p-value above 0.05")) %>%
+      add_header_above(c("Statistic" = 1, "Value" = 1)) %>% # Added heading to each column (statistic and value)
+  row_spec(0, bold = TRUE, background = "lightgray") # the table heading "Model 1" (row 0) is still bolded and has light gray background
+
+regression_model <- list()
+regression_model[['Univariate Regression']] <- lm(extra ~ group, data = sleep)
+msummary(regression_model, 
+         statistic = c("std.error", "conf.int", "p.value"), 
+         stars = TRUE,
+         conf_level = .95, 
+         title = "Fig. 3 Simple Linear Regression Model Summary",
+         notes = list("Group is a non-significant predictor of extra sleep", "p-value above 0.05")) %>%
+  row_spec(0, bold = TRUE, background = "lightgray") # remember that this is row 0
+# if you'd like to edit any other row, use whatever other row number you'd like 
+# row_spec() can also include align = "center" or "align = "right" if you want to center text
+# you can also involve underline = TRUE or strikeout = TRUE if you'd like to use these features
+# color = "red" or color = "#123456" will change the color of the text to your desired shade
+
+regression_model2 <- list()
+regression_model2[['Univariate Regression']] <- lm(extra ~ group, data = sleep)
+msummary(regression_model2, 
+         statistic = c("std.error", "conf.int", "p.value"), 
+         stars = TRUE,
+         conf_level = .95, 
+         title = "Fig. 3 Simple Linear Regression Model Summary",
+         notes = list("Group is a non-significant predictor of extra sleep", "p-value above 0.05")) %>%
+  row_spec(0, bold = TRUE, background = "lightgray") %>%
+  row_spec(2, bold = TRUE, background = "yellow") %>% # because we specified row 2, that is the one that is highlit with yellow
+  row_spec(3, bold = TRUE, italic = TRUE, color = "red") %>% # because we specified row 3, that is the one italicized and colored red
+  column_spec(1, bold = TRUE, background = "green") # because we specified column 1, that is the one with a green background
+```

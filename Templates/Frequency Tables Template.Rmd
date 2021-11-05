@@ -1,0 +1,156 @@
+---
+title: "Frequency Tables Template"
+author: "Jay Jeffries"
+date: "8/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(table1) # install.packages("table1") if you do not have this package already
+library(skimr) # install.packages("skimr") if you do not have this package already
+library(gtsummary)
+library(dplyr)
+library(report)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+## Data Exploration, "sleep"
+### Before Creating Tables
+```{r}
+skim(sleep)
+report(sleep)
+```
+
+The built-in dataset, `sleep`, is *extremely* basic, where there are 2 main variables: extra (hours of sleep) and group (experimental group).
+
+## Basic Frequency Tables
+### With Small Dataset
+```{r}
+label(sleep$extra) <- "Extra Sleep"
+label(sleep$group) <- "Participant Group"
+
+table1(~group, # We are asking for extra hours of sleep BY group (between group 1 and group2)
+      data = sleep, # We are using the built-in dataset "sleep"
+      caption = "Figure 1. Participant Groups for Sleep ") # caption can be used as a table title
+      # test = TRUE)
+      # type = c("simple", "condensed"))
+
+table1(~extra, # We are asking for extra hours of sleep BY group (between group 1 and group2)
+      data = sleep, # We are using the built-in dataset "sleep"
+      caption = "Figure 2. Extra Sleep Statistics") # caption can be used as a table title
+      # test = TRUE)
+      # type = c("simple", "condensed"))
+
+table1(~extra | group, # We are asking for extra hours of sleep BY group (between group 1 and group2)
+      data = sleep, # We are using the built-in dataset "sleep"
+      caption = "Figure 3. Extra Sleep by Participant Group") # caption can be used as a table title
+      # test = TRUE)
+      # type = c("simple", "condensed"))
+```
+
+Notice that, because the variable "extra" is continuous in nature, the output places means and medians instead of frequencies. That is likely because there are no two rows/participants that share the same number of hours for "extra". 
+
+Meanwhile, the variable "group" is dichotomous in nature (participants were in one of two sections). These two categories were output with frequency percentages for each group.
+
+## Data Exploration, "starwars"
+### Before Creating More Tables
+```{r}
+skim(starwars)
+report(starwars)
+```
+
+The dataset used for the following examples is `starwars`, which involves many variables. Some of the demographic terms are outdated, but I think it's a generally fun dataset to work with. This makes for more interesting frequency tables. 
+
+## Basic Frequency Table
+```{r}
+table1(~ species + sex, data = starwars, # Frequency of species and sex
+       caption = "Figure 4. Frequency of Species and Sex")
+```
+
+Notice how the header for "species" and "sex" variables, along with each category of "sex", are uncapitalized and it does not reference the units of measurement used? This bugs me. Let's fix this with the code below. 
+
+## Basic Frequency Table
+### Edited Labels
+```{r}
+starwars$gender <- factor(starwars$gender, levels = c("feminine", "masculine"),
+         labels=c("Feminine", "Masculine")) # Changes labels for level of gender 
+
+ starwars$sex <- factor(starwars$sex, levels = c("female", "hermaphroditic", "male", "none"),
+         labels=c("Female", "Intersex", "Male", "None")) # Changes labels for level of gender 
+```
+
+In the above, we changed the labels for
+
+* Character sex
+* Character gender expression
+
+We also edited the labels for each category of Sex and Gender!
+
+## New Frequency Tables with Updated Variables
+```{r, warning = FALSE, message = FALSE}
+table1(~ sex + gender | species, data = starwars, # Frequencies of sex and gender BY species
+       caption = "Figure 5 Frequency of Sex and Gender by Species") 
+table1(~ species + gender | sex, data = starwars, # Frequencies of species and gender BY sex
+       caption = "Figure 6. Frequency of Sex by Species and Gender") 
+```
+
+Notice how Figure 5. stretches far to the right of the page? In fact, you have to scroll horizontally to the right in order to even see the table contents. If you *have* to keep the same "wide" format for your table, I suggest you do chunks of the data in separate tables. If you have the option, change it into a more vertical, "narrow" format as seen in Figure 6.
+
+In the annotated code below, you can see how we use `[row, column]` data parsing method within the *starwars_byspecies* dataset so that we can choose specific rows to include in separate tables if you need to.
+
+```{r}
+starwars_byspecies <- starwars %>% # creating new dataset that is organized by a variable
+arrange(species) # Arranging the starwars dataset by species
+
+table1(~ sex + gender | species, data = starwars_byspecies[1:15,], # Table only involves content within rows 1 through 15
+       caption = "Figure 5 Frequency of Sex and Gender by Species") 
+
+table1(~ sex + gender | species, data = starwars_byspecies[13:55,], # Table only involves content within rows 13 through 55
+       caption = "Figure 5 Frequency of Sex and Gender by Species") 
+
+table1(~ sex + gender | species, data = starwars_byspecies[56:63,], # Table only involves content within rows 56 through 63
+       caption = "Figure 5 Frequency of Sex and Gender by Species") 
+
+table1(~ sex + gender | species, data = starwars_byspecies[64:70,], # Table only involves content within rows 64 through 70
+       caption = "Figure 5 Frequency of Sex and Gender by Species") 
+
+table1(~ sex + gender | species, data = starwars_byspecies[71:79,], # Table only involves content within rows 71 through 79
+       caption = "Figure 5 Frequency of Sex and Gender by Species") 
+
+table1(~ sex + gender | species, data = starwars_byspecies[80:87,], # Table only involves content within rows 80 through 87
+       caption = "Figure 5 Frequency of Sex and Gender by Species") 
+```
+
+This is one way that you can split up your data into chunks so that you can create more manageable-sized tables. It is advised that you rearrange your data by whatever grouping variable you wish, or else the frequency tables above would have had the "Human" species multiple times.
+
+## Customizing Frequency Tables
+### Using Premade Themes
+```{r}
+table1(~ sex | gender, data = starwars[1:8,], 
+      topclass = "Rtable1-zebra", # topclass customizes these tables, where Rtable1-zebra" stripes every other row
+      caption = "'Zebra' Frequency Table") 
+
+table1(~ sex | gender, data = starwars[1:8,], 
+       topclass = "Rtable1-shade",
+       caption = "'Shade' Frequency Table") # "Rtable1-shade" shades header rows
+
+table1(~ sex | gender, data = starwars[1:8,], 
+       topclass = "Rtable1-center",
+       caption = "'Center' Frequency Table") # "Rtable1-cebter" moves headings to the center
+
+table1(~ sex | gender, data = starwars[1:8,], 
+       topclass = "Rtable1-times",
+       caption = "'Times New Roman' Frequency Table") # "Rtable1-cebter" uses times new roman as font
+
+# to combine these, simply put a space between each customization command after, like this:
+table1(~ sex | gender, data = starwars[1:8,],
+       topclass = "Rtable1-grid Rtable1-shade Rtable1-times", 
+       caption = "Character Sex and Gender Expression Counts & Frequencies")
+```
