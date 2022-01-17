@@ -1,0 +1,325 @@
+---
+title: "Structural Equation Modeling R Template"
+author: "Jay Jeffries"
+date: "1/13/2022"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(checkpoint)
+library(lavaan)
+library(lavaanPlot)
+library(readxl)
+library(MVN)
+library(skimr)
+library(jmv)
+library(psych)
+library(MVN)
+library(dplyr)
+library(tidyr)
+
+rversion <- getRversion()
+create_checkpoint("2022-01-17", r_version = rversion, project_dir = "/Users/jayjeffries/Desktop/R Resources/SEMTemplate.Rmd")
+use_checkpoint("2022-01-17", r_version = rversion)
+# Checkpoint package allows files to be reproducible by ensuring the R package versions that the document was created with is used when reproducing. These R scripts rely on packages, but new versions of packages are released daily. To ensure that results from R are reproducible, it’s important to run R scripts using exactly the same package version in use when the script was written. This makes it easier to share your code with the confidence that others will get the same results you did. When others run this script on their machine for the first time, checkpoint will perform the same steps of scanning for package dependencies, creating the checkpoint directory, installing the necessary packages, and setting your session to use the checkpoint.
+
+setwd("/Users/jayjeffries/Desktop/R Resources/") # Update this to your working directory (file path for this .Rmd and the TeacherBurnout.xlsx data file)
+BurnoutData <- read_excel("TeacherBurnout.xlsx")
+
+# Additional dataset information can be found at https://data.mendeley.com/datasets/6jmv43nffk/2
+```
+
+## Structural Equation Modeling in `Lavaan`
+
+```{r Exploration, echo = FALSE}
+skim(BurnoutData)
+```
+
+```{r Correlation Matrix}
+colors <- colorRampPalette(c("#B52127", "white", "#2171B5"))
+cor.plot(BurnoutData, upper = FALSE, main = "Correlation Matrix of Teacher Burnout Variables", gr = colors)
+```
+
+```{r Normality Assumptions, echo = FALSE}
+mvn(BurnoutData, univariateTest = "SW", mvnTest = "mardia") # shapiro-Wilk univariate normality test
+```
+
+### Model Specification
+
+#### Building the Model
+
+The obtained data has 5 latent variables inherent in the measures. These
+are: teacher self-concept, efficacy, emotional exhaustion,
+depersonalization, and a reduced sense of personal accomplishment.
+Teacher self-concept (TSC1-TSC5) and self-efficacy (TE1-TE5) predict
+teacher burnout. Teacher burnout is composed of emotional exhaustion
+(EE1-EE5), depersonalization (DE1-DE3), and a reduced sense of personal
+accomplishment (RPA1-RPA5). Below is a table of commands to help us
+build this model. This dataset was adapted to include the feaux
+variables schoolID and districtID for demonstrative purposes.
+
+<center>
+
+| formula type               | operator | mnemonic           |
+|----------------------------|----------|--------------------|
+| latent variable definition | =\~      | is measured by     |
+| regression                 | \~       | is regressed on    |
+| (residual) (co)variance    | \~\~     | is correlated with |
+| intercept                  | \~ 1     | intercept          |
+
+</center>
+
+```{r Building Model}
+model <- '
+SelfConcept =~ TSC1 + TSC2 + TSC3 + TSC4 + TSC5 
+TeacherEfficacy =~ TE1 + TE2 + TE3 + TE4 + TE5
+EmotionalExhaustion =~ EE1 + EE2 + EE3 + EE4 + EE5
+Depersonalization =~ DE1 + DE2 + DE3
+ReducedAccomplishment =~ RPA1 + RPA2 + RPA3 + RPA4 + RPA5
+Burnout =~ EmotionalExhaustion + Depersonalization + ReducedAccomplishment
+Burnout ~ SelfConcept + TeacherEfficacy
+'
+# FACTOR LOADINGS
+# To fix a factor loading to 1, multiply factor by 1 (e.g. Burnout =~ 1*EmotionalExhaustion + Depersonalization + ReducedAccomplishment)
+    # In this case, the regression coefficient from Burnout to Emotional Exhaustion was set equal to 1.
+    # In the sem() function below, std.lv = TRUE allows the first indicator of each latent variable to be unconstrained.
+# Equality constraints can be placed on indicators via: Depersonalization =~ DE1 + DE2 + DE2*DE3
+  # In this case, DE2 and DE3 loadings are set to be equal.
+  # Similarly, Depersonalization =~ DE1 + DE2 + equal("Depersonalization=~DE2")*DE3  performs the same thing
+
+# FACTOR CO(VARIANCES)
+# To make factors orthogonal (correlation of 0), add a covariance formula (e.g. EmotionalExhaustion ~~ 0*Depersonalization)
+    # If all factors are to be orthogonal, a shortcut included in the sem() function below is to add orthogonal = TRUE
+
+# FACTOR VARIANCES
+# To fix the variance of a factor, elicit this in a formula akin to EmotionalExhaustion ~~ 1*EmotionalExhaustion
+
+# Unstandardized solution
+fit_model <- sem(model, data = BurnoutData, std.lv = TRUE, estimator = "MLM") 
+# MLM is used due to non-normal data and also provides robust SE's and scaled test statistics, which helps to address these assumption violations. 
+
+# Standardized solution
+standardizedsolution(fit_model, type = "std.all", se = TRUE, zstat = TRUE, pvalue = TRUE, ci = TRUE) %>%
+  filter(op == "=~") %>%
+  select(Latent_Var = lhs, Item = rhs, Coefficient = est.std, ci.lower, ci.upper, SE = se, Z = z, 'p-value' = pvalue)
+
+summary(fit_model, standardized = TRUE)
+
+parameterEstimates(fit_model, standardized = TRUE, rsquare = TRUE) %>% 
+  filter(op == "r2") %>% 
+  select(Item = rhs, R2 = est) 
+```
+
+Overall, the model accounted for 87.5% of variance in Teacher Burnout.
+
+```{r SEM Diagram, fig.align = 'center', fig.cap = "Structural Equation Model of Teacher Burnout"}
+lavaanPlot(model = fit_model, node_options = list(shape = "box", fontname = "Times"), edge_options = list(color = "grey"), coefs = TRUE, stand = TRUE, sig = .05)
+```
+
+```{r Matrices, fig.cap = "Model Variance-Covariance Matrix", eval = FALSE}
+# Note: this code chunk is suppressed due to the space it takes up, delete `eval = FALSE` to print
+
+fitted(fit_model) # Model-implied (fitted) covariance matrix with mean vector.
+
+vcov(fit_model) # Estimated covariance matrix of the parameter estimates.
+```
+
+------------------------------------------------------------------------
+
+### Fit Statistics
+
+#### Assessing Model Suitability
+
+```{r Chi-Square Fit Statistics}
+fitMeasures(fit_model, c("chisq.scaled", "df.scaled", "pvalue.scaled"))
+```
+
+The Satorra-Bentler scaled chi-square for this model was
+$\chi^2(224)=771.87$, which is significant at $p < .05$ level. The null
+hypothesis is rejected, which means that there is no difference between
+the model implied and actual covariance matrices. This evidences a
+discrepancy between the observed (*S*) and implied ($\Sigma$) covariance
+matrices. The fact that the chi-square value is significant raises
+questions regarding the sample size, as trivial differences can lead to
+significant based on sample size (is sensitive to *N*).This sensitivity
+to sample size means it is typically not used to make decisions.
+
+```{r RMSEA Fit Statistics}
+fitMeasures(fit_model, c("rmsea.scaled", "rmsea.ci.lower.scaled", "rmsea.ci.upper.scaled", "rmsea.pvalue.scaled"))
+```
+
+The root mean square error of approximation (RMSEA) is a popular measure
+of the discrepancy between the model-based and observed correlation
+matrices. It uses the model chi-square in its computation but makes
+adjustments based on model complexity (parsimony-adjusted) and has a
+known sampling distribution so it is possible to compute confidence
+intervals. It is often the goal to obtain an RMSEA \<= .05, where RMSEA
+between .05 - .08 exhibits reasonable fit, and .10 or above as poor fit
+(Brown & Cudeck, 1993). Between the .08 and .10 is a "gray area". The
+results ($RMSEA = .053$) indicate a reasonable to well-fitting model,
+which is supported by the non-significant *p*-value that supports a
+close fit model.
+
+```{r CFI and SRMR Fit Statistics}
+fitMeasures(fit_model, c("cfi.scaled", "srmr"))
+```
+
+The CFI is an index that compares the proposed model's covariance matrix
+to an independent ("restricted", "null", "baseline", complately
+uncorrelated) covariance matrix. To be considered good fit, the aim of a
+Comparitive Fit Index value is .95 or above (Hu & Bentler, 1999). This
+CFI estimate ($CFI = .92$) shows that the model does not have *close
+fit* to the data.
+
+The standardized root mean residual,SRMR, is based on the actual
+differences (discrepancies) between the model-based covariances and the
+actual covariances. This statistic finds the average difference between
+the average squared covariances in the sample and population through use
+of the standardized residuals of the model. Its standardization is
+useful, as it can interpret variables whose values are not on the same
+metric. It is common practice to determine that the mean correlation
+residual SRMR \<= .08 indicates good fit (Hu & Bentler, 1999), but SRMR
+can range from 0 to 1. This statistic ($SRMR = .043$) compares our model
+to a perfectly saturated model, and determines that the analyzed
+covariance matrix from this model nicely fits the implied covariance
+matrix from the data.
+
+```{r Fit Statistics, fig.align='center', echo = FALSE}
+knitr::include_graphics("https://stats.oarc.ucla.edu/wp-content/uploads/2020/02/fit.png")
+```
+
+```{r AIC and BIC Fit Statistics}
+AIC(fit_model)
+
+BIC(fit_model)
+```
+
+------------------------------------------------------------------------
+
+### Modification Indices
+
+```{r Modification Indices}
+modindices(fit_model, sort = TRUE, maximum.number = 5) # Top 5 recommended model modifications
+
+mi <- modindices(fit_model)
+
+# You can specialize type of mod indices by statistic (e.g. correlation, regression coeff's, etc.)
+
+MILoadings <- mi[mi$op == "=~",] # These are mod indices for factor loading regression coefficients only  
+MICovars <- mi[mi$op == "~~",] # These are mod indices for residual covariances (correlations) only
+
+# MILoadings   # These output are suppressed due to their size
+# MICovars
+```
+
+------------------------------------------------------------------------
+
+### Starting Values for Model Parameters
+
+<https://lavaan.ugent.be/tutorial/syntax2.html>
+
+```{r Starting Values, eval = FALSE}
+SelfConcept =~ TSC1 + start(0.5)*TSC2 + start(0.6)*TSC3 + start(0.7)*TSC4 + start(0.8)*TSC5 
+TeacherEfficacy =~ TE1 + start(0.3)*TE2 + TE3 + TE4 + start(0.5)*TE5
+Burnout ~ SelfConcept + TeacherEfficacy
+```
+
+Start values can be placed on factor loadings by using the function
+`start()`.
+
+------------------------------------------------------------------------
+
+## Multilevel Structural Equation Model
+
+#### Acknowledging Nested Data
+
+```{r MSEM, warning = FALSE}
+model2 <- '
+level: 1
+SelfConcept =~ TSC1 + TSC2 + TSC3 + TSC4 + TSC5 
+TeacherEfficacy =~ TE1 + TE2 + TE3 + TE4 + TE5
+TeacherEfficacy ~ SelfConcept
+EmotionalExhaustion =~ EE1 + EE2 + EE3 + EE4 + EE5
+Depersonalization =~ DE1 + DE2 + DE3
+ReducedAccomplishment =~ RPA1 + RPA2 + RPA3 + RPA4 + RPA5
+
+level: 2
+Burnout =~ EE1 + EE2 + EE3 + EE4 + EE5 + DE1 + DE2 + DE3 + RPA1 + RPA2 + RPA3 + RPA4 + RPA5
+'
+
+fit_MSEM <- sem(model = model2, data = BurnoutData, cluster = "schoolID")
+
+summary(fit_MSEM, fit.measures=TRUE)
+```
+
+```{r MSEM Plot, warning = FALSE}
+lavaanPlot(model = fit_MSEM, node_options = list(shape = "box", fontname = "Times"), edge_options = list(color = "grey"), coefs = TRUE, stand = TRUE, sig = .05)
+```
+
+------------------------------------------------------------------------
+
+## Model Fit Statistics
+
+Model chi-square is the chi-square statistic we obtain from the maximum likelihood statistic
+
+* in `lavaan`, this is known as the Test Statistic for the Model Test User Model
+* It is well documented in CFA and SEM literature that the chi-square is often overly sensitive in model
+testing especially for large samples. [David
+Kenny](http://www.davidakenny.net/cm/fit.htm) states that for models
+with 75 to 200 cases chi-square is a reasonable measure of fit, but for
+400 cases or more it is nearly almost always significant 
+* If CFI = 0, then it means that the user's model is misspecified.
+
+CFI is the Comparative Fit Index 
+
+* values can range between 0 and 1 (values greater than 0.90 are adequate, conservatively 0.95 indicate
+good fit).
+
+TLI Tucker Lewis Index ranges between 0 and 1 (if it's greater than 1 it
+should be rounded to 1) with values greater than 0.90 indicating good
+fit. 
+
+* The CFI is always greater than the TLI. 
+* If you reject the model, it means your model is not a close fitting model. 
+* The term used in the TLI is the "relative chi-square" (i.e. normed chi-square) and is
+less sensitive to sample size. 
+* You can think of the TLI as the ratio
+of the deviation of the null (baseline) model from user model to the
+deviation of the baseline (or null) model to the perfect fit model. 
+* Because the TLI and CFI are highly correlated, only one of the two
+should be reported.
+
+RMSEA is the root mean square error of approximation. You can also
+obtain a p-value of close fit when the RMSEA $\< 0.05$. 
+
+* The root mean square error of approximation is an absolute measure of fit because it
+does not compare the discrepancy of the user model relative to a
+baseline model (like the CFI or TLI). Instead, RMSEA defines as the
+non-centrality parameter which measures the degree of misspecification.
+  + $\leq .05$ indicates close-fit 
+  + between $.05$ to $.08$ indicates reasonable approximate fit; fails close-fit but also fails poor-fit 
+  + $\geq .10$ indicates (poor-fit)
+
+```{r MSEM Fit, warning = FALSE}
+lavInspect(fit_MSEM, "icc") # Intraclass correlations 
+
+# lavInspect(fit_MSEM, "h1") # Unrestricted within- and between-means and covariances
+
+# modindices(fit_MSEM, sort = TRUE)
+modindices(fit_MSEM, sort = TRUE, maximum.number = 5) # Top 5 recommended model modifications
+```
+
+------------------------------------------------------------------------
+
+## Resources
+
+[Lavaan package documentation](https://lavaan.ugent.be/tutorial/inspect.html) 
+
+[UCLA Introduction to SEM in R with Lavaan](https://stats.oarc.ucla.edu/r/seminars/rsem/) 
+
+[Using R for Social Work Research, Chapter 5](https://bookdown.org/bean_jerry/using_r_for_social_work_research/structural-equation-modeling.html)

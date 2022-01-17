@@ -1,0 +1,125 @@
+---
+title: "NACHB 2022 RMarkdown Introduction"
+author: "Jay Jeffries"
+date: "8/5/2021"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!require("knitr")) install.packages("knitr")
+library(knitr)
+if (!require("remedy")) install.packages("remedy")
+library(remedy)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. R Markdown originally started as an R package, but has grown into its own RStudio environment for its versatility and power. R Markdown allows users to input text or images along with code to output documents or slide with built-in statistical analyses. Think of the power of SPSS, the reporting capabilites of MS Word, and the customizations of html and css in one place.
+
+[More details on using R Markdown](http://rmarkdown.rstudio.com) 
+
+This is what a typical R Markdown document looks like. At the top of this script, you can choose to enter information into *or* completely delete. In the output, the text above will appear as a large header (title) and subheaders (author/date). 
+
+### Inline R Code and Code Chunks
+
+If you wish to begin inputting R code, you will need to begin a "chunk" of code. Within the code chunk, you can write any number of lines that you need.
+If you do not begin your R input without a chunk of code, whatever text you put that is **not** within this code chunk will appear, as-is. A "chunk" of embedded R code can be created with the following code: 
+
+| ```{r}
+| enter your R code here
+| ``` 
+<font size="1">Note: The tick-mark key is available above the tab key. </font>
+
+As an example, if you do not include the code chunk around your R input, it will render as this:
+
+head(cars)
+
+Whereas below includes the chunking code:
+
+```{r cars}
+head(cars)
+```
+
+You can also embed plots, for example:
+```{r pressure, echo=FALSE}
+plot(cars)
+```
+
+***
+
+### R Markdown Setup
+
+| ```{r setup, include = FALSE}
+| knitr::opts_chunk$set(echo = TRUE)
+| ```
+
+You will notice that the code chunk above is automatically included in every R Markdown file that you create and can be found near the top of the script. {Knitr} is the R package that R Markdown entirely relies on -- later on, we will be doing some "knitting" to produce output. The code chunk above is standard because it tells R that any global settings you've made to your R software are applied to this R Markdown script. It is necessary for the functioning of this document, so avoid deleting it. 
+
+Think of R as the "computer" and {Knitr} as the "printer". 
+
+While you may not want the code chunk to appear in your final rendered document (who would?), fret not! Inclusion of the code `include = FALSE` in the first line of curly brackets allows for it to not be printed with your output. As default, whatever you put in R chunks will appear in your rendered document unless indicated otherwise. Some other input options for the curly brackets that you may want to use (depending on your R code) are:
+
+Curly Bracket Options | Description
+------------- | ------------- 
+`eval = FALSE` | Whether to evaluate the code and include its results (Default: TRUE)
+`echo = FALSE` | Whether to display code along with its results (Default: TRUE)
+`warning FALSE` | Whether to display warnings from your embedded code (Default: TRUE)
+`error = TRUE` | Whether to display errors that result from your R code--*oops!*, (Default: FALSE)
+`message = FALSE` | Whether to display messages regarding your code (Default: TRUE)
+`tidy = TRUE` | Whether to reformat code in a tidy way when displaying it (Default: FALSE)
+`results = "markup"` | "markup" "markup", "asis", "hold", or "hide" (Default: "markup")
+`cache = TRUE` | Whether to cache results for future renders (Default: FALSE)
+`comment = symbol` | Comment character to preface results with (Default: "#")
+`fig.width = whatever value you wish` | Width in inches for plots created in chunk (Default: 7in.)
+`fig.height = whatever value you wish` | Height in inches for plots created in chunk (Default: 7in.)
+
+***
+
+### R Markdown Headers
+
+When you are wanting to label the heading of your content, you can choose between 6 sizes. Including the text "#" before your text will result in the largest header R Markdown has, while including the text "######" (six hash signs) will rseult in the smallest header. Any number of hash signs inbetween will render smaller headers, ascending from "#" to "######". 
+
+### R Markdown Lists and Quotes
+
+###### Bulleted list
+
+* item 1
+* item 2
+ + sub-item 1
+ + sub-item 2
+
+###### Numerically-ordered
+
+1. item 2
+2. item 3
+ + sub-item 1
+ + sub-item 2 
+ 
+###### Block Quotes
+
+Inclusion of ">" preceding your quote.
+
+> Hello reader! It is currently 82$^\circ$ here in lovely Lincoln, Nebraska.
+
+### R Markdown Font Formatting
+
+Instructions | Results
+------------- | -------------
+Wrap your text with asterisks or underscores | *italicized text*
+Wrap your text with two asterisks or underscores | **bolded text**
+Wrap your text with carrot symbols (^) | superscripts^2^
+Wrap your text with two tildes (~) | ~~strikethrough text~~
+Warp text in brackets, [words], immediately followed by your desired link in parentheses, (link), to make hyperlinked text | [MERC Homepage](https://merc.unl.edu/)
+End a line with two spaces to start a new paragraph | Just try this one out yourself..
+
+### Great Additional R Markdown Resources:
+
+[__*R Markdown Cookbook*__](https://bookdown.org/yihui/rmarkdown-cookbook/), Xie et al. (2021)
+
+[__*R Markdown: The Definitive Guide*__](https://bookdown.org/yihui/rmarkdown/), Xie et al. (2021)
+
+When you click the **Knit** button a document will be generated that includes both written (textual) content as well as the output of any embedded R code chunks within the document.
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
